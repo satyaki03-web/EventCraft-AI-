@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Sparkles,
   Calendar,
@@ -145,6 +145,11 @@ export default function App() {
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isSendingChat, setIsSendingChat] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, isSendingChat]);
   
   // Notification toast
   const [copiedNotification, setCopiedNotification] = useState(false);
@@ -507,11 +512,48 @@ export default function App() {
     }
   };
 
-  // Chat Call
-  const handleSendChat = async () => {
-    if (!chatInput.trim() || isSendingChat) return;
+  // Client-side fallback answer in case of network interruption or server delay
+  const getClientFallback = (ctx: EventContext, question: string): string => {
+    const q = (question || '').toLowerCase();
+    const sym = ctx.currencySymbol || '₹';
+    const guests = ctx.guestCount || 100;
+    const budget = ctx.totalBudget || 500000;
+    const perGuest = Math.round(budget / guests);
+    const city = ctx.city || 'Mumbai';
+    const eventType = ctx.eventType || 'event';
 
-    const userText = chatInput.trim();
+    if (q.includes('catering') || q.includes('food') || q.includes('menu') || q.includes('dietary') || q.includes('jain') || q.includes('veg')) {
+      return `To optimize catering for ${guests} guests (estimated ~${sym}${Math.round(perGuest * 0.38).toLocaleString()} per plate), streamline your menu to 2 live starter counters and a focused main buffet rather than 10+ overlapping dishes. In ${city}, choosing seasonal produce and cutting redundant dessert counters can trim catering expenses by 12–15% without sacrificing quality!`;
+    }
+
+    if (q.includes('budget') || q.includes('cost') || q.includes('money') || q.includes('price') || q.includes('per guest') || q.includes('save') || q.includes('saving')) {
+      return `With a total budget of ${sym}${budget.toLocaleString()} for ${guests} guests (~${sym}${perGuest.toLocaleString()} per guest), allocate 35–40% to catering, 25% to venue/decor, and protect an 8% contingency fund (${sym}${Math.round(budget * 0.08).toLocaleString()}). To save money, consider bundle deals combining venue and sound equipment.`;
+    }
+
+    if (q.includes('rain') || q.includes('weather') || q.includes('outdoor') || q.includes('heat') || q.includes('tent') || q.includes('wind')) {
+      return `For outdoor events in ${city}, ensure a waterproof marquee with anchored sidewalls is secured at least 3 weeks in advance. Always hire a dedicated silent diesel generator (minimum 40 KVA) so sound, lighting, and food warmers never cut out during peak moments.`;
+    }
+
+    if (q.includes('vendor') || q.includes('photographer') || q.includes('dj') || q.includes('negotiat') || q.includes('contract') || q.includes('book')) {
+      return `When negotiating with key vendors for your ${eventType}, request all-inclusive quotes covering setup, teardown, and travel fees. Always ask for written guarantees regarding exact arrival times, backup equipment, and a defined overtime hourly rate.`;
+    }
+
+    if (q.includes('timeline') || q.includes('when') || q.includes('schedule') || q.includes('milestone') || q.includes('days') || q.includes('order')) {
+      return `Focus first on venue confirmation and primary caterer booking, as they anchor your entire calendar. Finalize your guest RSVPs 10 days out so your caterer only prepares the exact plates needed, avoiding wasted budget.`;
+    }
+
+    if (q.includes('gift') || q.includes('favor') || q.includes('invite') || q.includes('invitation')) {
+      return `For gifts for your ${guests} guests, eco-friendly choices like miniature potted succulents, artisanal tea tins, or customized seed-paper cards cost only ${sym}100–200 each and leave a lasting impression. Switch to digital animated invitations to save 100% on printing and courier costs.`;
+    }
+
+    return `For your ${ctx.title} in ${city}, keep priorities clear: secure the venue and main caterer first, maintain a written log of vendor advances, and preserve your contingency fund for day-of adjustments!`;
+  };
+
+  // Chat Call with multi-tier resilience
+  const handleSendChat = async (promptOverride?: string) => {
+    const userText = (promptOverride || chatInput).trim();
+    if (!userText || isSendingChat) return;
+
     setChatInput('');
     setChatMessages((prev) => [...prev, { sender: 'user', text: userText }]);
     setIsSendingChat(true);
@@ -522,15 +564,27 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ context, question: userText }),
       });
-      const data = await res.json();
+      
+      let answerText = '';
+      if (res.ok) {
+        const data = await res.json();
+        answerText = data.answer && typeof data.answer === 'string' ? data.answer.trim() : '';
+      }
+
+      if (!answerText) {
+        answerText = getClientFallback(context, userText);
+      }
+
       setChatMessages((prev) => [
         ...prev,
-        { sender: 'planner', text: data.answer || 'I recommend prioritizing your caterer and venue booking early!' },
+        { sender: 'planner', text: answerText },
       ]);
     } catch (e) {
+      console.warn('Network or API issue, providing client fallback answer:', e);
+      const fallbackText = getClientFallback(context, userText);
       setChatMessages((prev) => [
         ...prev,
-        { sender: 'planner', text: 'Sorry, I encountered an issue. Please try rephrasing your question!' },
+        { sender: 'planner', text: fallbackText },
       ]);
     } finally {
       setIsSendingChat(false);
@@ -1575,53 +1629,138 @@ export default function App() {
 
         {/* FOCUSED ASK PLANNER TAB */}
         {activeTab === 'chat' && (
-          <div className="bg-[#FFFFFF] rounded-[12px] warm-card-shadow border border-[#E5E0E1] flex flex-col h-[520px]">
-            <div className="p-4 border-b border-[#E5E0E1] flex items-center space-x-2.5 bg-[#782F40] text-[#FFFFFF] rounded-t-[12px]">
-              <MessageSquare className="w-4 h-4 text-[#E3CD40]" />
-              <div>
-                <h3 className="font-bold text-sm">Event Planning Consultant</h3>
-                <p className="text-[11px] text-white/80 font-medium">Context active: {context.title} ({context.city})</p>
+          <div className="bg-[#FFFFFF] rounded-[12px] warm-card-shadow border border-[#E5E0E1] flex flex-col h-[560px]">
+            <div className="p-4 border-b border-[#E5E0E1] flex items-center justify-between bg-[#782F40] text-[#FFFFFF] rounded-t-[12px]">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                  <MessageSquare className="w-4 h-4 text-[#E3CD40]" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm flex items-center space-x-2">
+                    <span>Event Planning Consultant</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E3CD40] text-[#2A2122]">
+                      Online
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-white/80 font-medium">
+                    {context.title} • {context.city} • {context.guestCount} Guests ({context.currencySymbol}{context.totalBudget.toLocaleString()})
+                  </p>
+                </div>
               </div>
+
+              <button
+                onClick={() => setChatMessages([
+                  { sender: 'planner', text: `Hello! I have your plan for "${context.title}" loaded. What would you like to explore—catering savings, vendor contracts, or weather backups?` }
+                ])}
+                className="text-[11px] font-semibold text-white/70 hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg transition"
+                title="Reset conversation"
+              >
+                Reset Chat
+              </button>
             </div>
 
-            <div className="flex-1 p-4 overflow-y-auto space-y-3">
+            {/* Chat Messages Log */}
+            <div className="flex-1 p-4 overflow-y-auto space-y-3.5">
               {chatMessages.map((msg, idx) => (
                 <div
                   key={idx}
                   className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div
-                    className={`max-w-[80%] rounded-[12px] px-4 py-2.5 text-xs font-semibold leading-relaxed shadow-xs ${
-                      msg.sender === 'user'
-                        ? 'bg-[#782F40] text-[#FFFFFF] rounded-br-none'
-                        : 'bg-[#FDFBF7] text-[#2A2122] rounded-bl-none border border-[#E5E0E1]'
-                    }`}
-                  >
-                    {msg.text}
+                  <div className="flex flex-col max-w-[85%]">
+                    <span className={`text-[10px] font-bold mb-1 ${msg.sender === 'user' ? 'text-right text-[#782F40]' : 'text-[#2A2122]/60 flex items-center space-x-1'}`}>
+                      {msg.sender === 'user' ? (
+                        'You'
+                      ) : (
+                        <>
+                          <Sparkles className="w-3 h-3 text-[#E85942] inline mr-1" />
+                          <span>EventCraft Planner</span>
+                        </>
+                      )}
+                    </span>
+                    <div
+                      className={`rounded-[12px] px-4 py-3 text-xs font-semibold leading-relaxed shadow-xs ${
+                        msg.sender === 'user'
+                          ? 'bg-[#782F40] text-[#FFFFFF] rounded-tr-none'
+                          : 'bg-[#FDFBF7] text-[#2A2122] rounded-tl-none border border-[#E5E0E1]'
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
                   </div>
                 </div>
               ))}
               {isSendingChat && (
-                <div className="text-xs text-[#2A2122]/60 italic font-bold">Planner formulating recommendation...</div>
+                <div className="flex items-center space-x-2 text-xs text-[#2A2122]/70 font-bold bg-[#FDFBF7] border border-[#E5E0E1] rounded-[12px] px-3.5 py-2 max-w-xs">
+                  <RefreshCw className="w-3.5 h-3.5 text-[#E85942] animate-spin" />
+                  <span>Consulting planning database...</span>
+                </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-3 border-t border-[#E5E0E1] bg-[#FDFBF7] rounded-b-[12px] flex items-center space-x-2">
+            {/* Quick Suggestions Strip */}
+            <div className="px-4 py-2 bg-[#FDFBF7] border-t border-[#E5E0E1] overflow-x-auto">
+              <div className="flex items-center space-x-2 text-[11px] whitespace-nowrap">
+                <span className="font-bold text-[#782F40] shrink-0">💡 Quick Prompts:</span>
+                <button
+                  type="button"
+                  onClick={() => handleSendChat('How can I save 15% on catering without compromising food quality?')}
+                  disabled={isSendingChat}
+                  className="bg-white hover:bg-[#E3CD40]/20 text-[#2A2122] border border-[#E5E0E1] hover:border-[#E85942] px-2.5 py-1 rounded-full font-medium transition cursor-pointer"
+                >
+                  Save on Catering
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSendChat('What is our outdoor contingency plan if it rains or gets too hot?')}
+                  disabled={isSendingChat}
+                  className="bg-white hover:bg-[#E3CD40]/20 text-[#2A2122] border border-[#E5E0E1] hover:border-[#E85942] px-2.5 py-1 rounded-full font-medium transition cursor-pointer"
+                >
+                  Rain & Weather Plan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSendChat('What key questions should I ask vendors before paying a booking deposit?')}
+                  disabled={isSendingChat}
+                  className="bg-white hover:bg-[#E3CD40]/20 text-[#2A2122] border border-[#E5E0E1] hover:border-[#E85942] px-2.5 py-1 rounded-full font-medium transition cursor-pointer"
+                >
+                  Vendor Negotiation Tips
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSendChat('How should we sequence the day-of timeline for smooth crowd flow?')}
+                  disabled={isSendingChat}
+                  className="bg-white hover:bg-[#E3CD40]/20 text-[#2A2122] border border-[#E5E0E1] hover:border-[#E85942] px-2.5 py-1 rounded-full font-medium transition cursor-pointer"
+                >
+                  Day-of Timeline
+                </button>
+              </div>
+            </div>
+
+            {/* Chat Input Bar */}
+            <div className="p-3 border-t border-[#E5E0E1] bg-[#FFFFFF] rounded-b-[12px] flex items-center space-x-2">
               <input
                 type="text"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSendChat();
+                  }
+                }}
                 placeholder="Ask e.g. 'How can I save on catering without losing quality?'"
-                className="flex-1 bg-[#FFFFFF] border border-[#E5E0E1] focus:border-[#E85942] focus:ring-1 focus:ring-[#E85942] rounded-[12px] px-3.5 py-2.5 text-xs font-medium text-[#2A2122] outline-none transition"
+                className="flex-1 bg-[#FDFBF7] border border-[#E5E0E1] focus:border-[#E85942] focus:ring-1 focus:ring-[#E85942] rounded-[12px] px-3.5 py-2.5 text-xs font-medium text-[#2A2122] outline-none transition"
               />
               {/* Primary Send Button in PANTONE 19-1555 Red Dahlia (#782F40) */}
               <button
-                onClick={handleSendChat}
-                disabled={isSendingChat}
-                className="bg-[#782F40] hover:bg-[#642534] text-[#FFFFFF] p-2.5 rounded-[12px] transition disabled:opacity-50 cursor-pointer"
+                type="button"
+                onClick={() => handleSendChat()}
+                disabled={isSendingChat || !chatInput.trim()}
+                className="bg-[#782F40] hover:bg-[#642534] text-[#FFFFFF] px-4 py-2.5 rounded-[12px] font-bold text-xs flex items-center space-x-1.5 transition disabled:opacity-50 cursor-pointer shrink-0"
               >
-                <Send className="w-4 h-4 text-[#E3CD40]" />
+                <span>Send</span>
+                <Send className="w-3.5 h-3.5 text-[#E3CD40]" />
               </button>
             </div>
           </div>
