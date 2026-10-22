@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@theme {
+  --color-warmivory: #FDFBF7;
+  --color-reddahlia: #782F40;
+  --color-reddahlia-hover: #5E2230;
+  --color-espresso: #2A2122;
+  --color-orangeade: #E85942;
+  --color-quince: #E3CD40;
+  --color-pinkglo: #FF0084;
+  --color-border-soft: #E5E0E1;
+}
+
+body {
+  background-color: #FDFBF7;
+  color: #2A2122;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom warm shadow for cards tinted with Red Dahlia */
+.warm-card-shadow {
+  box-shadow: 0 4px 14px rgba(120, 47, 64, 0.08);
+}
+
+.warm-card-shadow-lg {
+  box-shadow: 0 8px 24px rgba(120, 47, 64, 0.14);
+}
+
+/* Print Media Styles for Event Summary PDF Export */
+@media print {
+  @page {
+    size: auto;
+    margin: 10mm 12mm;
+  }
+
+  html, body {
+    background: #FFFFFF !important;
+    background-color: #FFFFFF !important;
+    color: #2A2122 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    font-size: 10pt;
+    line-height: 1.35;
+  }
+
+  /* Hide interactive, navigation, and floating UI elements */
+  .no-print,
+  header,
+  nav,
+  button,
+  .animate-ping,
+  .animate-bounce {
+    display: none !important;
+  }
+
+  /* Full-width container reset */
+  main {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Clean borders instead of heavy box-shadows for ink & PDF fidelity */
+  .warm-card-shadow,
+  .warm-card-shadow-lg {
+    box-shadow: none !important;
+    border: 1px solid #D1CACB !important;
+    background-color: #FFFFFF !important;
+  }
+
+  /* Prevent awkward page-break splits inside cards, timeline items, and vendors */
+  .print-avoid-break,
+  .grid > div,
+  .break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Preserve exact colors on badges, tags, and progress bars */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  a[href]:after {
+    content: none !important;
+  }
+}

@@ -1,0 +1,25 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugin-dependencies
+.packages
+build/
+*.mks
+
+# Environment and Secrets
+.env
+*.env
+*.keys
+local.properties
+
+# IDE & OS files
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Node / Web preview artifacts
+node_modules/
+dist/
+server.js
