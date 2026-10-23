@@ -45,8 +45,9 @@ export const handler = async (event, context) => {
       throw new Error('GEMINI_API_KEY environment variable is missing');
     }
 
-    // Securely fetch Google Gemini API
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // Securely fetch Google Gemini API using gemini-3.8-flash
+    const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const apiResponse = await fetch(geminiUrl, {
       method: 'POST',
