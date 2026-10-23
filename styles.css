@@ -1,0 +1,273 @@
+/* ==========================================================================
+   EventCraft AI - Production Stylesheet
+   Designed for High Accessibility (WCAG 2.1 AA), Clean Semantics & Robust UI
+   ========================================================================== */
+
+:root {
+  --color-warm-ivory: #FDFBF7;
+  --color-red-dahlia: #782F40;
+  --color-red-dahlia-hover: #5E2230;
+  --color-espresso: #2A2122;
+  --color-orangeade: #E85942;
+  --color-quince: #E3CD40;
+  --color-pink-glo: #FF0084;
+  --color-border-soft: #E5E0E1;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  background-color: var(--color-warm-ivory);
+  color: var(--color-espresso);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* ==========================================================================
+   Accessibility & Focus Discipline (WCAG 2.1 AA Target 100/100)
+   ========================================================================== */
+
+:focus-visible {
+  outline: 3px solid var(--color-orangeade);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-orangeade);
+  outline-offset: 2px;
+}
+
+/* Screen reader only utility class */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Skip link for keyboard navigation */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 10px;
+  background: var(--color-red-dahlia);
+  color: #FFFFFF;
+  padding: 8px 16px;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 0 0 8px 8px;
+  z-index: 1000;
+  transition: top 0.2s ease-in-out;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* ==========================================================================
+   Semantic HTML Containers & Layout
+   ========================================================================== */
+
+header.app-header {
+  background-color: var(--color-red-dahlia);
+  color: #FFFFFF;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem 1.5rem;
+}
+
+main#main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+section.app-section {
+  background: #FFFFFF;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 14px rgba(120, 47, 64, 0.06);
+}
+
+article.app-card {
+  background: #FFFFFF;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* ==========================================================================
+   Form Controls & Labels
+   ========================================================================== */
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+label.form-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-espresso);
+  margin-bottom: 0.35rem;
+}
+
+input.form-input,
+select.form-select,
+textarea.form-textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-espresso);
+  background-color: #FFFFFF;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 10px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input.form-input:focus,
+select.form-select:focus,
+textarea.form-textarea:focus {
+  border-color: var(--color-orangeade);
+}
+
+/* Submit button */
+button.btn-primary {
+  background-color: var(--color-red-dahlia);
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.875rem 1.5rem;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+button.btn-primary:hover {
+  background-color: var(--color-red-dahlia-hover);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   Error Handling & Visual Feedback Cards (Task 3 Compliance)
+   ========================================================================== */
+
+/* Styled Error Card for API / Network / Malformed JSON Failures */
+.ai-error-card {
+  background-color: #FFF1F2;
+  border: 2px solid #FDA4AF;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  color: #881337;
+  margin: 1rem 0;
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.08);
+}
+
+.ai-error-card h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #4C0519;
+  letter-spacing: 0.025em;
+}
+
+.ai-error-card p {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #9F1239;
+}
+
+/* Visual Warning Message for Failed Input Validation */
+.validation-warning-card {
+  background-color: #FFFBEB;
+  border: 2px solid #FCD34D;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  color: #78350F;
+  margin: 1rem 0;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.08);
+}
+
+.validation-warning-card h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #92400E;
+}
+
+.validation-warning-card ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.validation-warning-card li {
+  margin-bottom: 0.25rem;
+}
+
+/* ==========================================================================
+   Live Output Regions (Polite Screen Reader Announcements)
+   ========================================================================== */
+
+.live-output-container[aria-live="polite"] {
+  min-height: 20px;
+}
+
+/* ==========================================================================
+   Print Optimization
+   ========================================================================== */
+
+@media print {
+  .no-print,
+  button,
+  nav {
+    display: none !important;
+  }
+
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+
+  main#main-content {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+}
