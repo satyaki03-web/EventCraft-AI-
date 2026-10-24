@@ -370,4 +370,212 @@ describe('Task 1: Code Quality & Cleanliness (Target: 100/100)', () => {
   });
 });
 
+describe('Frontend JavaScript Strict Evaluation Criteria (1-5)', () => {
+  it('Criterion 1: verifies all frontend JS files wrap logic in an IIFE and enforce strict mode', async () => {
+    const fs = await import('fs');
+    const files = [
+      'app.js',
+      'js/api.js',
+      'js/ui.js',
+      'js/validation.js',
+      'js/formatting.js',
+      'js/events.js',
+    ];
+
+    for (const file of files) {
+      const code = fs.readFileSync(file, 'utf-8');
+      // Must contain IIFE pattern (() => { ... })()
+      expect(code).toMatch(/=\s*\(\(\)\s*=>\s*\{/);
+      expect(code).toContain('\'use strict\';');
+    }
+  });
+
+  it('Criterion 2: extracts all strings and magic numbers into top-level CONSTANTS objects', async () => {
+    const apiModule = await import('../js/api.js');
+    const validationModule = await import('../js/validation.js');
+    const formattingModule = await import('../js/formatting.js');
+    const uiModule = await import('../js/ui.js');
+    const eventsModule = await import('../js/events.js');
+    const appModule = await import('../app.js');
+
+    // Each module exposes a frozen CONSTANTS object
+    const apiConsts = apiModule.CONSTANTS as any;
+    const valConsts = validationModule.CONSTANTS as any;
+    const fmtConsts = formattingModule.CONSTANTS as any;
+    const uiConsts = uiModule.CONSTANTS as any;
+    const evtConsts = eventsModule.CONSTANTS as any;
+    const appConsts = appModule.CONSTANTS as any;
+
+    expect(apiConsts).toBeDefined();
+    expect(Object.isFrozen(apiConsts)).toBe(true);
+    expect(apiConsts.FETCH_TIMEOUT_MS).toBe(10000);
+    expect(apiConsts.API_ENDPOINT).toBe('/.netlify/functions/generate-event');
+
+    expect(valConsts).toBeDefined();
+    expect(Object.isFrozen(valConsts)).toBe(true);
+    expect(valConsts.MIN_BUDGET_BOUNDARY).toBe(0);
+    expect(valConsts.ERROR_PAST_DATE).toBe('Event date cannot be in the past.');
+
+    expect(fmtConsts).toBeDefined();
+    expect(Object.isFrozen(fmtConsts)).toBe(true);
+    expect(fmtConsts.DEFAULT_CURRENCY_SYMBOL).toBe('₹');
+
+    expect(uiConsts).toBeDefined();
+    expect(Object.isFrozen(uiConsts)).toBe(true);
+    expect(uiConsts.DEFAULT_ERROR_CARD_MESSAGE).toContain('Unable to generate plan');
+
+    expect(evtConsts).toBeDefined();
+    expect(Object.isFrozen(evtConsts)).toBe(true);
+    expect(evtConsts.SELECTORS.EVENT_FORM).toBe('#event-form');
+
+    expect(appConsts).toBeDefined();
+    expect(Object.isFrozen(appConsts)).toBe(true);
+    expect(appConsts.FETCH_TIMEOUT_MS).toBe(10000);
+  });
+
+  it('Criterion 3: AbortController with 10-second timeout triggers UI error state on failure/abort', async () => {
+    const { generateEvent } = await import('../js/api.js');
+
+    const mockCard = { textContent: '', style: { display: 'none' } };
+    const mockStatus = { textContent: '', style: { display: 'none' } };
+
+    (global as any).document = {
+      querySelector: (selector: string) => {
+        if (selector === '#error-card' || selector === '#ai-error') return mockCard;
+        if (selector === '#error-message' || selector === '#ai-status') return mockStatus;
+        return null;
+      },
+      getElementById: (id: string) => {
+        if (id === 'error-card' || id === 'ai-error') return mockCard;
+        return null;
+      },
+      createElement: (tag: string) => ({
+        tagName: tag.toUpperCase(),
+        className: '',
+        setAttribute: () => {},
+        appendChild: () => {},
+        textContent: '',
+      }),
+    };
+
+    const originalFetch = global.fetch;
+    // Simulate abort error when 10-second timeout fires
+    global.fetch = async (_url: any, opts: any) => {
+      if (opts?.signal) {
+        const err = new Error('The operation was aborted');
+        err.name = 'AbortError';
+        throw err;
+      }
+      return { ok: true, json: async () => ({ ideas: {} }) } as any;
+    };
+
+    try {
+      const result = await generateEvent('Fast abort test');
+      expect(result).toBeNull();
+      // UI error state updated
+      expect(mockCard.textContent).toContain('Unable to generate plan');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('Criterion 4: strict boundary validation explicitly blocks past dates and budgets <= 0', async () => {
+    const { validateEventInput, isPastDate } = await import('../js/validation.js');
+
+    // Boundary: Past dates
+    expect(isPastDate('2020-01-01')).toBe(true);
+    expect(isPastDate('1999-12-31')).toBe(true);
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    expect(isPastDate(yesterdayStr)).toBe(true);
+
+    // Boundary: Today and future dates
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    expect(isPastDate(todayStr)).toBe(false);
+
+    const future = new Date();
+    future.setFullYear(future.getFullYear() + 2);
+    const futureStr = `${future.getFullYear()}-12-25`;
+    expect(isPastDate(futureStr)).toBe(false);
+
+    // Past date validation test
+    const pastRes = validateEventInput({
+      title: 'Anniversary Party',
+      eventType: 'wedding',
+      eventDate: '2021-05-10',
+      guestCount: 50,
+      totalBudget: 100000,
+      city: 'Delhi',
+    });
+    expect(pastRes.isValid).toBe(false);
+    expect(pastRes.errors).toContain('Event date cannot be in the past.');
+
+    // Boundary: Budget <= 0
+    const zeroRes = validateEventInput({
+      title: 'Zero Budget Event',
+      eventType: 'birthday',
+      eventDate: '2027-01-01',
+      guestCount: 20,
+      totalBudget: 0,
+      city: 'Pune',
+    });
+    expect(zeroRes.isValid).toBe(false);
+    expect(zeroRes.errors).toContain('Total budget must be a positive number greater than zero.');
+
+    const negRes = validateEventInput({
+      title: 'Negative Budget Event',
+      eventType: 'birthday',
+      eventDate: '2027-01-01',
+      guestCount: 20,
+      totalBudget: -100,
+      city: 'Pune',
+    });
+    expect(negRes.isValid).toBe(false);
+    expect(negRes.errors).toContain('Total budget must be a positive number greater than zero.');
+  });
+
+  it('Criterion 5: ensures 100% JSDoc coverage with @param and @returns for all functions', async () => {
+    const fs = await import('fs');
+    const files = [
+      'app.js',
+      'js/api.js',
+      'js/ui.js',
+      'js/validation.js',
+      'js/formatting.js',
+      'js/events.js',
+    ];
+
+    for (const file of files) {
+      const code = fs.readFileSync(file, 'utf-8');
+
+      // Find all function declarations: function foo(...)
+      const functionMatches = [...code.matchAll(/function\s+([a-zA-Z0-9_$]+)\s*\(([^)]*)\)/g)];
+      expect(functionMatches.length).toBeGreaterThan(0);
+
+      for (const match of functionMatches) {
+        const funcName = match[1];
+        const params = match[2].trim();
+        const funcIndex = match.index!;
+
+        // Look back for JSDoc comment /** ... */ preceding this function
+        const textBefore = code.slice(Math.max(0, funcIndex - 2000), funcIndex);
+        const lastCommentIndex = textBefore.lastIndexOf('/**');
+        expect(lastCommentIndex).toBeGreaterThan(-1);
+
+        const commentBlock = textBefore.slice(lastCommentIndex);
+        expect(commentBlock).toContain('*/');
+        expect(commentBlock).toContain('@returns');
+
+        if (params.length > 0) {
+          expect(commentBlock).toContain('@param');
+        }
+      }
+    }
+  });
+});
+
+
 

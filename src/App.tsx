@@ -662,6 +662,9 @@ Return strictly a valid JSON object matching these exact keys:
   "sampleDayOfSchedule": ["string"]
 }`;
 
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 10000) : null;
+
     try {
       const res = await fetch('/.netlify/functions/generate-event', {
         method: 'POST',
@@ -669,6 +672,7 @@ Return strictly a valid JSON object matching these exact keys:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ prompt }),
+        signal: controller ? controller.signal : undefined,
       });
 
       if (!res.ok) {
@@ -726,6 +730,9 @@ Return strictly a valid JSON object matching these exact keys:
       const fallback = getOfflineFallbackIdeas(context);
       setIdeas({ ...fallback, isFallback: true });
     } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       setIsGeneratingIdeas(false);
     }
   };
